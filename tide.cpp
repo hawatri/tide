@@ -4,8 +4,9 @@
 #include <fstream>
 #include <sstream>
 #include <unordered_set>
+#include <cctype>
 
-class tide {
+class MiniVim {
 private:
     std::vector<std::string> buffer;
     int cursor_x, cursor_y;
@@ -48,17 +49,10 @@ private:
     };
 
 public:
-    tide(const char* filename) : cursor_x(0), cursor_y(0), filename(filename),
+    MiniVim(const char* filename) : cursor_x(0), cursor_y(0), filename(filename),
                                   show_line_numbers(true), should_exit(false) {
         buffer.push_back("");
         mode = COMMAND;
-        start_color();
-        init_pair(1, COLOR_WHITE, COLOR_BLACK);
-        init_pair(2, COLOR_BLUE, COLOR_BLACK);
-        init_pair(3, COLOR_GREEN, COLOR_BLACK);
-        init_pair(4, COLOR_CYAN, COLOR_BLACK);
-        init_pair(5, COLOR_MAGENTA, COLOR_BLACK);
-        init_pair(6, COLOR_YELLOW, COLOR_BLACK);
     }
 
     void run() {
@@ -67,6 +61,15 @@ public:
         noecho();
         keypad(stdscr, TRUE);
         curs_set(0);
+
+        // Initialize colors
+        start_color();
+        init_pair(1, COLOR_WHITE, COLOR_BLACK);
+        init_pair(2, COLOR_BLUE, COLOR_BLACK);
+        init_pair(3, COLOR_GREEN, COLOR_BLACK);
+        init_pair(4, COLOR_CYAN, COLOR_BLACK);
+        init_pair(5, COLOR_MAGENTA, COLOR_BLACK);
+        init_pair(6, COLOR_YELLOW, COLOR_BLACK);
 
         load_file();
         main_loop();
@@ -161,7 +164,6 @@ private:
 
     std::vector<int> highlight_syntax(const std::string& line, SyntaxState& state) {
         std::vector<int> colors(line.size(), NORMAL);
-        bool in_single_line_comment = false;
 
         for (size_t i = 0; i < line.size(); i++) {
             if (state.in_comment) {
@@ -217,26 +219,33 @@ private:
 
             if (line[i] == '#') {
                 colors[i] = PREPROCESSOR;
-                size_t end = line.find(' ', i);
-                if (end == std::string::npos) end = line.size();
+                size_t end = line.size();
                 std::fill(colors.begin()+i, colors.begin()+end, PREPROCESSOR);
-                i = end-1;
-                continue;
+                break;
             }
 
-            if (isdigit(line[i])) {
+            if (isdigit(line[i]) && (i == 0 || !isalnum(line[i-1]))) {
                 colors[i] = NUMBER;
+                size_t end = i + 1;
+                while (end < line.size() && (isdigit(line[end]) || line[end] == '.' || line[end] == 'x')) {
+                    end++;
+                }
+                std::fill(colors.begin()+i, colors.begin()+end, NUMBER);
+                i = end - 1;
                 continue;
             }
 
-            if (isalpha(line[i])) {
+            if (isalpha(line[i]) || line[i] == '_') {
                 size_t start = i;
-                while (i < line.size() && (isalnum(line[i]) || line[i] == '_')) i++;
-                std::string word = line.substr(start, i-start);
+                while (i < line.size() && (isalnum(line[i]) || line[i] == '_')) {
+                    i++;
+                }
+                std::string word = line.substr(start, i - start);
                 if (cpp_keywords.count(word)) {
                     std::fill(colors.begin()+start, colors.begin()+i, KEYWORD);
                 }
                 i--;
+                continue;
             }
         }
         return colors;
@@ -392,7 +401,7 @@ private:
 
 int main(int argc, char** argv) {
     const char* filename = argc > 1 ? argv[1] : "untitled.txt";
-    tide editor(filename);
+    MiniVim editor(filename);
     editor.run();
     return 0;
 }
