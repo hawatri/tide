@@ -5,7 +5,7 @@
 #include <sstream>
 #include <unordered_set>
 
-class MiniVim {
+class tide {
 private:
     std::vector<std::string> buffer;
     int cursor_x, cursor_y;
@@ -48,7 +48,7 @@ private:
     };
 
 public:
-    MiniVim(const char* filename) : cursor_x(0), cursor_y(0), filename(filename),
+    tide(const char* filename) : cursor_x(0), cursor_y(0), filename(filename),
                                   show_line_numbers(true), should_exit(false) {
         buffer.push_back("");
         mode = COMMAND;
@@ -392,7 +392,7 @@ private:
 
 int main(int argc, char** argv) {
     const char* filename = argc > 1 ? argv[1] : "untitled.txt";
-    MiniVim editor(filename);
+    tide editor(filename);
     editor.run();
     return 0;
 }
